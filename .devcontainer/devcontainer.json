@@ -1,0 +1,22 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
+{
+	"name": "Existing Dockerfile",
+	"workspaceFolder": "/code",
+	"dockerComposeFile": "../docker-compose.yml",
+	"service": "dev",
+	"runServices": [],
+	"customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "~/.local/share/virtualenvs/commit-tracker/bin/python"
+            },
+            "extensions": [
+				"ms-python.python",
+				"ms-python.debugpy",
+				"ms-python.vscode-pylance",
+				"njpwerner.autodocstring"
+			]
+        }
+    }
+}

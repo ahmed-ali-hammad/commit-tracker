@@ -1,0 +1,26 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "*"
+uvicorn = "*"
+pydantic = "*"
+pydantic-settings = "*"
+sqlalchemy = "*"
+asyncmy = "*"
+cryptography = "*"
+click = "*"
+httpx = "*"
+
+[dev-packages]
+isort = "*"
+black = "*"
+flake8 = "*"
+pytest = "*"
+pytest-asyncio = "*"
+pytest-mock = "*"
+
+[requires]
+python_version = "3.13"

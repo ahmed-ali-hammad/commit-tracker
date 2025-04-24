@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: commit-tracker-dev
+    networks:
+      - commit-tracker
+    ports:
+      - '7090:8000'
+    volumes:
+      - ./:/code/
+    command: 'sh -c "echo \"Container started\" && while sleep 1; do :; done"'
+
+  db:
+    image: mysql:8.0.34
+    container_name: commit-tracker-db
+    networks:
+      - commit-tracker
+    environment:
+      MYSQL_USER: db_user
+      MYSQL_PASSWORD: fMvT82Pr1A7UntrzUDK
+      MYSQL_ROOT_PASSWORD: SD1pgMtt5CYy8YsKl5g
+      MYSQL_DATABASE: commit_history
+    volumes:
+      - "./db_data:/var/lib/mysql"
+
+  db-test:
+    image: mysql:8.0.34
+    container_name: commit-tracker-db-test
+    networks:
+      - commit-tracker
+    environment:
+      MYSQL_USER: db_user_test
+      MYSQL_PASSWORD: Zds5DuF6TLbZexOZHjP
+      MYSQL_ROOT_PASSWORD: aqudMiqDr8rVaxffJ68
+      MYSQL_DATABASE: commit_history
+
+networks:
+  commit-tracker:
+    name: commit-tracker
