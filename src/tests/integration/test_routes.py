@@ -24,7 +24,7 @@ def get_settings_test():
 
 
 async def get_session_test():
-    engine = create_async_engine(get_settings_test().DATABASE_URI)
+    engine = create_async_engine(get_settings_test().ASYNC_DATABASE_URI)
     session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
     async with engine.begin() as conn:

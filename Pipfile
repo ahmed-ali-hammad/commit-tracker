@@ -6,13 +6,15 @@ name = "pypi"
 [packages]
 fastapi = "*"
 uvicorn = "*"
-pydantic = "*"
 pydantic-settings = "*"
 sqlalchemy = "*"
 asyncmy = "*"
 cryptography = "*"
 click = "*"
 httpx = "*"
+pydantic = "*"
+alembic = "*"
+mysqlclient = "*"
 
 [dev-packages]
 isort = "*"
