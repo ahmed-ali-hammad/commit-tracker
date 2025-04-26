@@ -89,7 +89,7 @@ class TestRoutes:
 
     @pytest.mark.asyncio
     async def test_get_aggregated_commits_data_by_author(self):
-        response = client.get(f"/commits/authors/summary")
+        response = client.get("/commits/authors/summary")
         summary = response.json()
 
         assert response.status_code == 200
