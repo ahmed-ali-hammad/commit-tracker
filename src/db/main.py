@@ -1,7 +1,12 @@
 import logging
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.sql import text
 
 _logger = logging.getLogger(__name__)
@@ -13,7 +18,7 @@ class DatabaseManager:
     """
 
     _instance = None
-    _async_engine = None
+    _async_engine: Optional[AsyncEngine] = None
 
     def __new__(cls, database_uri: str):
         if not hasattr(cls, "instance"):
@@ -38,6 +43,19 @@ class DatabaseManager:
 
         async with Session() as session:
             yield session
+
+    @classmethod
+    async def dispose_engine(cls) -> None:
+        """
+        Disposes the current async engine.
+
+        This method is used to safely close and release resources associated
+        with the current async engine.
+        """
+        if cls._async_engine is not None:
+            _logger.info("Disposing of the current async engine.")
+            await cls._async_engine.dispose()
+        cls._async_engine = None
 
 
 async def check_db_connection(session: AsyncSession) -> bool:

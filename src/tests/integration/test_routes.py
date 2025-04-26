@@ -5,22 +5,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from src.db.main import DatabaseManager
 from src.db.models import Base
+from src.tests.integration.conftest import get_settings_test
 from src.webapp.main import app, get_settings
-from src.webapp.settings import Settings
 
 client = TestClient(app)
-
-
-def get_settings_test():
-    return Settings(
-        GITHUB_API_URL="https://github-api-test-only.de",
-        GITHUB_ACCESS_TOKEN="dummy-token",
-        DATABASE_USER="db_user_test",
-        DATABASE_PASSWORD="Zds5DuF6TLbZexOZHjP",
-        DATABASE_HOST="commit-tracker-db-test",
-        DATABASE_PORT="3306",
-        DATABASE_NAME="commit_history",
-    )
 
 
 async def get_session_test():
@@ -53,3 +41,66 @@ class TestRoutes:
         response = client.get("/health")
         assert response.status_code == 200
         assert response.json() == {"status": "OK"}
+
+    @pytest.mark.asyncio
+    async def test_get_commits_by_author_name_success(self):
+        author_identifier = "Sean Nguyen"
+        response = client.get(f"/commits/by-author/{author_identifier}")
+        assert response.status_code == 200
+        assert any(commit["author_name"] == "Sean Nguyen" for commit in response.json())
+
+    @pytest.mark.asyncio
+    async def test_get_commits_by_author_email_success(self):
+        author_identifier = "diego@lsoft.dev"
+        response = client.get(f"/commits/by-author/{author_identifier}")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert any(commit["author_email"] == author_identifier for commit in data)
+        assert all("commit_hash" in commit for commit in data)
+        for commit in data:
+            assert "commit_hash" in commit
+            assert "author_name" in commit
+            assert "repo_name" in commit
+            assert "author_email" in commit
+
+    @pytest.mark.asyncio
+    async def test_get_commits_by_author_not_found(self):
+        author_identifier = "Non Existent"
+        response = client.get(f"/commits/by-author/{author_identifier}")
+        assert response.status_code == 404
+        assert (
+            response.json()["detail"] == "No commits found for the author: Non Existent"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_commits_by_author_case_insensitive(self):
+        author_identifier = "sean nguyen"
+        response = client.get(f"/commits/by-author/{author_identifier}")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert any(
+            commit["author_name"].lower() == author_identifier.lower()
+            for commit in data
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_aggregated_commits_data_by_author(self):
+        response = client.get(f"/commits/authors/summary")
+        summary = response.json()
+
+        assert response.status_code == 200
+        assert any(author["name"] == "Sean Nguyen" for author in summary["authors"])
+        assert any("total_commits" in author for author in summary["authors"])
+        assert all("latest_commit" in author for author in summary["authors"])
+
+    @pytest.mark.asyncio
+    async def test_recent_commits_grouped_by_author_success(self):
+        response = client.get("/commits/authors/recent")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert isinstance(data, list)

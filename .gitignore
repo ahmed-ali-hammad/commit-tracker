@@ -1,5 +1,6 @@
 .vscode
 .DS_Store
+.mypy_cache
 .pytest_cache
 __pycache__
 db_data

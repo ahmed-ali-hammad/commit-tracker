@@ -1,80 +1,76 @@
 import asyncio
 import logging
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 import httpx
-from sqlalchemy.dialects.mysql import insert
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.adapters.storage import CommitStorage
 from src.db.models import Commit
 from src.domain.validator import GitHubCommit
+from src.git_providers import GitProvider
 
 _logger = logging.getLogger(__name__)
 
 
 class CommitService:
-    @staticmethod
-    async def fetch_commit_page(
-        httpx_client: httpx.AsyncClient, github_access_token, page: int
-    ) -> list[dict]:
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {github_access_token}",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-        url = (
-            f"https://api.github.com/repos/nodejs/node/commits?per_page=100&page={page}"
-        )
-        response = await httpx_client.get(url, headers=headers)
-        response.raise_for_status()
-        return response.json()
+    DEFAULT_REPO_NAME = "nodejs/node"
+    DEFAULT_PAGE_RANGE = (1, 11)
+    DEFAULT_RECENT_DAYS = 7
+
+    def __init__(self, storage: CommitStorage, git_provider: GitProvider):
+        self.storage = storage
+        self.git_provider = git_provider
 
     @staticmethod
-    def process_commit_batch(commits: list) -> tuple[list, list]:
+    def _transform_commit_data(
+        commit_data: dict, repo_name: str = DEFAULT_REPO_NAME
+    ) -> dict:
+        """Transform raw commit data into storage format."""
+        validated = GitHubCommit(**commit_data)
+        return {
+            "commit_hash": validated.sha,
+            "author_name": validated.commit.author.name,
+            "author_email": validated.commit.author.email,
+            "commit_message": validated.commit.message,
+            "commit_date": int(validated.commit.author.date.timestamp()),
+            "repo_name": repo_name,
+        }
+
+    @staticmethod
+    def _process_commit_batch(
+        commits: list, repo_name: str = DEFAULT_REPO_NAME
+    ) -> tuple[list, list]:
         successful_commits = []
         failed_commits = []
 
         for commit_data in commits:
             try:
-                validated = GitHubCommit(**commit_data)
-                successful_commits.append(
-                    {
-                        "commit_hash": validated.sha,
-                        "author_name": validated.commit.author.name,
-                        "author_email": validated.commit.author.email,
-                        "commit_message": validated.commit.message,
-                        "commit_date": int(validated.commit.author.date.timestamp()),
-                        "repo_name": "nodejs/node",
-                    }
+                transformed = CommitService._transform_commit_data(
+                    commit_data, repo_name
                 )
+                successful_commits.append(transformed)
             except Exception as e:
                 _logger.warning(f"Error processing commit: {e}")
                 failed_commits.append(commit_data.get("sha", "unknown"))
 
         return successful_commits, failed_commits
 
-    @staticmethod
-    async def save_commits_batch(session: AsyncSession, commit_batch: list):
-        if not commit_batch:
-            return
-
-        stmt = insert(Commit).values(commit_batch)
-        stmt = stmt.on_duplicate_key_update(
-            commit_hash=stmt.inserted.commit_hash
-        )  # Dummy update: this does nothing but satisfies MySQL
-        await session.execute(stmt)
-        return len(commit_batch)
-
-    @staticmethod
     async def retrieve_and_store_commits(
-        session: AsyncSession, httpx_client: httpx.AsyncClient, github_access_token: str
-    ) -> dict:
+        self,
+        httpx_client: httpx.AsyncClient,
+        github_access_token: str,
+        repo_name: str = DEFAULT_REPO_NAME,
+        page_range: tuple[int, int] = DEFAULT_PAGE_RANGE,
+    ) -> None:
         results = {"total_processed": 0, "pages_processed": 0, "failed_commits": 0}
 
         # Fetch all pages concurrently
-        pages = range(1, 11)
         tasks = [
-            CommitService.fetch_commit_page(httpx_client, github_access_token, page)
-            for page in pages
+            self.git_provider._fetch_commit_batch(
+                httpx_client, github_access_token, repo_name, page
+            )
+            for page in range(*page_range)
         ]
         pages_data = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -83,16 +79,59 @@ class CommitService:
                 _logger.error(f"Error fetching page {page_num}: {page_result}")
                 continue
 
-            commit_batch, failed = CommitService.process_commit_batch(page_result)
-            processed = await CommitService.save_commits_batch(session, commit_batch)
+            commit_batch, failed = self._process_commit_batch(page_result)
+            await self.storage.save_commit_batch(commit_batch)
 
-            results["total_processed"] += processed
             results["pages_processed"] += 1
+            results["total_processed"] += len(commit_batch)
             results["failed_commits"] += len(failed)
 
             _logger.info(
-                f"Processed {processed} commits from page {page_num} ({len(failed)} failed)"
+                f"Processed {len(commit_batch)} commits from page {page_num} ({len(failed)} failed)"
             )
 
-        await session.commit()
-        return results
+    async def get_commits_by_author_name_or_email(self, author_identifier):
+        commits = await self.storage.fetch_commits_by_author(author_identifier)
+        return commits
+
+    async def get_commits_summary_grouped_by_author(self):
+        grouped_data = await self.storage.fetch_commit_summary_by_author()
+
+        return {
+            "authors": [
+                {
+                    "name": author.author_name,
+                    "email": author.author_email,
+                    "total_commits": author.total_commits,
+                    "latest_commit": author.latest_commit_date,
+                }
+                for author in grouped_data
+            ]
+        }
+
+    def _get_start_date(self, days_ago: int = DEFAULT_RECENT_DAYS) -> int:
+        """Calculate timestamp for filtering commits."""
+        return int((datetime.now(timezone.utc) - timedelta(days=days_ago)).timestamp())
+
+    def _group_commits_by_author(self, commits: list[Commit]) -> dict:
+        """Process raw commits into grouped structure."""
+        grouped = defaultdict(list)
+        for commit in commits:
+            grouped[commit.author_name].append(
+                {
+                    "hash": commit.commit_hash,
+                    "date": commit.commit_date,
+                }
+            )
+        return grouped
+
+    async def get_recent_commits_grouped_by_author(self, days_ago: int = 7) -> dict:
+        """Composed method using the split components."""
+        start_date = self._get_start_date(days_ago)
+        commits = await self.storage.fetch_commits_since(start_date)
+        grouped = self._group_commits_by_author(commits)
+
+        return [
+            {"author": author, "commits": commits}
+            for author, commits in grouped.items()
+        ]

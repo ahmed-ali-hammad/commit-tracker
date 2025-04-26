@@ -21,11 +21,11 @@ class TestSettings:
         settings = Settings()
 
         assert settings.DATABASE_URI == (
-            "mysql://db_hero:supersecret123@database-central.de:3306/testdb?charset=utf8"
+            "mysql://db_hero:supersecret123@database-central.de:3306/testdb?charset=utf8mb4"
         )
 
         assert settings.ASYNC_DATABASE_URI == (
-            "mysql+asyncmy://db_hero:supersecret123@database-central.de:3306/testdb?charset=utf8"
+            "mysql+asyncmy://db_hero:supersecret123@database-central.de:3306/testdb?charset=utf8mb4"
         )
 
     @pytest.mark.asyncio
