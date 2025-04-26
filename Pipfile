@@ -23,6 +23,7 @@ flake8 = "*"
 pytest = "*"
 pytest-asyncio = "*"
 pytest-mock = "*"
+mypy = "*"
 
 [requires]
 python_version = "3.13"

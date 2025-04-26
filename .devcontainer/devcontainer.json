@@ -9,7 +9,13 @@
 	"customizations": {
         "vscode": {
             "settings": {
-                "python.defaultInterpreterPath": "~/.local/share/virtualenvs/commit-tracker/bin/python"
+                "python.defaultInterpreterPath": "~/.local/share/virtualenvs/commit-tracker/bin/python",
+				"editor.defaultFormatter": "ms-python.black-formatter",
+				"editor.formatOnSave": true,
+				"editor.codeActionsOnSave": {
+					"source.organizeImports": true
+				},
+				"isort.args":["--profile", "black"]
             },
             "extensions": [
 				"ms-python.python",
