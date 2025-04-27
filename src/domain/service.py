@@ -97,17 +97,15 @@ class CommitService:
     async def get_commits_summary_grouped_by_author(self):
         grouped_data = await self.storage.fetch_commit_summary_by_author()
 
-        return {
-            "authors": [
-                {
-                    "name": author.author_name,
-                    "email": author.author_email,
-                    "total_commits": author.total_commits,
-                    "latest_commit": author.latest_commit_date,
-                }
-                for author in grouped_data
-            ]
-        }
+        return [
+            {
+                "author_name": author.author_name,
+                "author_email": author.author_email,
+                "total_number_of_commits": author.total_commits,
+                "latest_commit_date": author.latest_commit_date,
+            }
+            for author in grouped_data
+        ]
 
     def _get_start_date(self, days_ago: int = DEFAULT_RECENT_DAYS) -> int:
         """Calculate timestamp for filtering commits."""
@@ -119,8 +117,8 @@ class CommitService:
         for commit in commits:
             grouped[commit.author_name].append(
                 {
-                    "hash": commit.commit_hash,
-                    "date": commit.commit_date,
+                    "commit_hash": commit.commit_hash,
+                    "commit_date": commit.commit_date,
                 }
             )
         return grouped
@@ -132,6 +130,6 @@ class CommitService:
         grouped = self._group_commits_by_author(commits)
 
         return [
-            {"author": author, "commits": commits}
+            {"author_name": author, "commits": commits}
             for author, commits in grouped.items()
         ]
