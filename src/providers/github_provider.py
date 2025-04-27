@@ -11,21 +11,20 @@ _logger = logging.getLogger(__name__)
 
 
 class GitHubProvider(GitProvider):
-    PER_PAGE_LIMIT = 100  # Max number of commits per page
+    PER_BATCH_LIMIT = 100  # Max number of commits per Batch
 
     async def _fetch_commit_batch(
         self,
         httpx_client: httpx.AsyncClient,
-        token: str,
+        github_access_token: str,
         repo_name: str,
-        page_number: int,
+        batch_number: int,
     ) -> List[dict]:
         """Fetch a batch of commits from GitHub API."""
-        github_access_token = token
 
         url = f"https://api.github.com/repos/{repo_name}/commits"
 
-        params = {"page": page_number, "per_page": self.PER_PAGE_LIMIT}
+        params = {"page": batch_number, "per_page": self.PER_BATCH_LIMIT}
 
         headers = {
             "Accept": "application/vnd.github+json",
@@ -76,17 +75,17 @@ class GitHubProvider(GitProvider):
     async def get_and_process_commit_batch_from_remote_provider(
         self,
         httpx_client: httpx.AsyncClient,
-        token: str,
+        github_access_token: str,
         repo_name: str,
-        page_number: int,
+        batch_number: int,
     ) -> Tuple[List[dict], List[str]]:
         """Retrieve and process a batch of commits from GitHub."""
 
         batch = await self._fetch_commit_batch(
-            httpx_client, token, repo_name, page_number
+            httpx_client, github_access_token, repo_name, batch_number
         )
-        successful_commits_list, failed_commits_list = self._process_commit_batch(
+        successful_commits, failed_commits = self._process_commit_batch(
             batch, repo_name
         )
 
-        return successful_commits_list, failed_commits_list
+        return successful_commits, failed_commits

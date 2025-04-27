@@ -51,7 +51,12 @@ async def life_span(app: FastAPI):
     _logger.info("Cleanup complete. Bye!")
 
 
-app = FastAPI(title="Commit Tracker API", lifespan=life_span)
+app = FastAPI(
+    title="Commit Tracker API",
+    description="API to fetch and display commits from a public developer platform, such as GitHub.",
+    version="1.0.0",
+    lifespan=life_span,
+)
 
 
 @app.get(
@@ -76,6 +81,7 @@ async def health_check(
     db_connection_status = await check_db_connection(session)
 
     if not db_connection_status:
+        _logger.warning("Health check failed due to unhealty Database!")
         raise HTTPException(status_code=500, detail="Database connection failed")
 
     return StatusResponse(status="OK")
@@ -105,9 +111,9 @@ async def trigger_commit_fetch(
         background_tasks.add_task(
             commit_service.retrieve_and_store_commits,
             httpx_client=httpx_client,
-            github_access_token=settings.GITHUB_ACCESS_TOKEN,
+            token=settings.GITHUB_ACCESS_TOKEN,
         )
-        _logger.info("Background task for commit fetch successfully scheduled.")
+        _logger.info("Background task for commits fetch is successfully scheduled.")
         return StatusResponse(status="Processing started in background")
     except Exception as ex:
         _logger.error(

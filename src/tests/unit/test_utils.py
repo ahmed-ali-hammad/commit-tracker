@@ -7,8 +7,9 @@ from src.utils import SingletonHttpx
 from src.webapp.settings import Settings
 
 
+@pytest.mark.asyncio
 class TestSettings:
-    @pytest.mark.asyncio
+
     async def test_settings_builds_database_uri(self, monkeypatch):
         monkeypatch.setenv("GITHUB_API_URL", "https://github-api-test-only.de")
         monkeypatch.setenv("GITHUB_ACCESS_TOKEN", "dummy-token")
@@ -28,7 +29,6 @@ class TestSettings:
             "mysql+asyncmy://db_hero:supersecret123@database-central.de:3306/testdb?charset=utf8mb4"
         )
 
-    @pytest.mark.asyncio
     async def test_settings_raises_error_on_missing_value(self, monkeypatch):
         monkeypatch.setenv("GITHUB_API_URL", "https://github-api-test-only.de")
         monkeypatch.setenv("GITHUB_ACCESS_TOKEN", "dummy-token")
@@ -45,8 +45,9 @@ class TestSettings:
         assert "DATABASE_URI" in str(exc_info.value)
 
 
+@pytest.mark.asyncio
 class TestDBConnection:
-    @pytest.mark.asyncio
+
     async def test_check_db_connection_success(self, mock_async_db_session):
         mock_async_db_session.execute.return_value = True
         is_connected = await check_db_connection(mock_async_db_session)
@@ -54,7 +55,6 @@ class TestDBConnection:
         mock_async_db_session.execute.assert_called_once()
         assert is_connected is True
 
-    @pytest.mark.asyncio
     async def test_check_db_connection_failure(self, mock_async_db_session):
         mock_async_db_session.execute.side_effect = Exception(
             "Database connection error"
@@ -66,15 +66,15 @@ class TestDBConnection:
         assert is_connected is False
 
 
+@pytest.mark.asyncio
 class TestSingletonHttpx:
-    @pytest.mark.asyncio
+
     async def test_get_httpx_client_success(self):
         SingletonHttpx.get_httpx_client()
 
         assert SingletonHttpx.httpx_client is not None
         assert isinstance(SingletonHttpx.httpx_client, httpx.AsyncClient)
 
-    @pytest.mark.asyncio
     async def test_close_httpx_client_success(self):
         await SingletonHttpx.close_httpx_client()
 

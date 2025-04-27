@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class StatusResponse(BaseModel):
@@ -54,11 +54,4 @@ class CommitSummary(BaseModel):
 
 class AuthorCommitsListResponse(BaseModel):
     author_name: str
-    number_of_commits: int
     commits: List[CommitSummary]
-
-    @model_validator(mode="before")
-    @classmethod
-    def set_commit_count(cls, data):
-        data["number_of_commits"] = len(data["commits"])
-        return data
