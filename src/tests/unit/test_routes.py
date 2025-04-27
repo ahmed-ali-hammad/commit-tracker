@@ -37,8 +37,9 @@ async def override_dependency():
     app.dependency_overrides = {}
 
 
+@pytest.mark.asyncio
 class TestRoutes:
-    @pytest.mark.asyncio
+
     async def test_health_check_healthy(self, mocker):
         mock_check_db_connection = mocker.patch(
             "src.webapp.main.check_db_connection",
@@ -50,7 +51,6 @@ class TestRoutes:
         assert response.status_code == 200
         assert response.json() == {"status": "OK"}
 
-    @pytest.mark.asyncio
     async def test_health_check_not_healthy(self, mocker):
         mock_check_db_connection = mocker.patch(
             "src.webapp.main.check_db_connection",

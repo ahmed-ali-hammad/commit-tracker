@@ -1,30 +1,13 @@
 import pytest
 import pytest_asyncio
+from fastapi import BackgroundTasks
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from src.db.main import DatabaseManager
-from src.db.models import Base
-from src.tests.integration.conftest import get_settings_test
+from src.tests.integration.helpers import get_session_test, get_settings_test
 from src.webapp.main import app, get_settings
 
 client = TestClient(app)
-
-
-async def get_session_test():
-    engine = create_async_engine(get_settings_test().ASYNC_DATABASE_URI)
-    session_maker = async_sessionmaker(engine, expire_on_commit=False)
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    async with session_maker() as session:
-        yield session
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-    await engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="class", autouse=True)
@@ -35,22 +18,41 @@ async def override_dependency():
     app.dependency_overrides = {}
 
 
+@pytest.mark.asyncio
 class TestRoutes:
-    @pytest.mark.asyncio
+
     async def test_health_check_healthy(self):
         response = client.get("/health")
         assert response.status_code == 200
         assert response.json() == {"status": "OK"}
 
-    @pytest.mark.asyncio
-    async def test_get_commits_by_author_name_success(self):
+    async def test_trigger_commit_fetch_success(self, mocker):
+        mocker.patch(
+            "src.domain.service.CommitService.retrieve_and_store_commits"
+        )  # mock here to avoid calling git provider with each run
+
+        response = client.post("/commits/trigger-fetch")
+
+        assert response.status_code == 200
+        assert response.json() == {"status": "Processing started in background"}
+
+    async def test_trigger_commit_fetch_failure(self, mocker):
+        mocker.patch.object(
+            BackgroundTasks, "add_task", side_effect=Exception("Test error")
+        )
+
+        response = client.post("/commits/trigger-fetch")
+
+        assert response.status_code == 500
+        assert response.json() == {"detail": "Something went wrong"}
+
+    async def test_get_commits_by_author_name_success(self, create_dummpy_commits):
         author_identifier = "Sean Nguyen"
         response = client.get(f"/commits/by-author/{author_identifier}")
         assert response.status_code == 200
         assert any(commit["author_name"] == "Sean Nguyen" for commit in response.json())
 
-    @pytest.mark.asyncio
-    async def test_get_commits_by_author_email_success(self):
+    async def test_get_commits_by_author_email_success(self, create_dummpy_commits):
         author_identifier = "diego@lsoft.dev"
         response = client.get(f"/commits/by-author/{author_identifier}")
 
@@ -65,15 +67,9 @@ class TestRoutes:
             assert "repo_name" in commit
             assert "author_email" in commit
 
-    @pytest.mark.asyncio
-    async def test_get_commits_by_author_not_found(self):
-        author_identifier = "Non Existent"
-        response = client.get(f"/commits/by-author/{author_identifier}")
-        assert response.status_code == 404
-        assert response.json()["detail"] == "No commits found for: Non Existent"
-
-    @pytest.mark.asyncio
-    async def test_get_commits_by_author_case_insensitive(self):
+    async def test_get_commits_by_author_case_insensitive_name(
+        self, create_dummpy_commits
+    ):
         author_identifier = "sean nguyen"
         response = client.get(f"/commits/by-author/{author_identifier}")
 
@@ -85,8 +81,27 @@ class TestRoutes:
             for commit in data
         )
 
-    @pytest.mark.asyncio
-    async def test_get_aggregated_commits_data_by_author(self):
+    async def test_get_commits_by_author_case_insensitive_email(
+        self, create_dummpy_commits
+    ):
+        author_identifier = "JAKE@NETOPS.DEV"
+        response = client.get(f"/commits/by-author/{author_identifier}")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert any(
+            commit["author_email"].lower() == author_identifier.lower()
+            for commit in data
+        )
+
+    async def test_get_commits_by_author_not_found(self):
+        author_identifier = "Non Existent"
+        response = client.get(f"/commits/by-author/{author_identifier}")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "No commits found for: Non Existent"
+
+    async def test_get_aggregated_commits_data_by_author(self, create_dummpy_commits):
         response = client.get("/commits/authors/summary")
         summary = response.json()
 
@@ -95,10 +110,15 @@ class TestRoutes:
         assert any("total_number_of_commits" in author for author in summary)
         assert all("latest_commit_date" in author for author in summary)
 
-    @pytest.mark.asyncio
-    async def test_recent_commits_grouped_by_author_success(self):
+    async def test_recent_commits_grouped_by_author_success(
+        self, create_dummpy_commits
+    ):
         response = client.get("/commits/authors/recent")
         assert response.status_code == 200
 
         data = response.json()
+        expected_keys = ["author_name", "commits"]
+
         assert isinstance(data, list)
+        for key in expected_keys:
+            assert key in data[0]

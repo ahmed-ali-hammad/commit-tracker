@@ -1,43 +1,35 @@
+from unittest.mock import MagicMock
+
 import pytest_asyncio
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from src.db.models import Base, Commit
+from src.adapters.database_adapter import DatabaseStorage
+from src.db.models import Commit
+from src.domain.service import CommitService
 from src.tests.integration.dummpy_commits_data import test_commits
-from src.webapp.settings import Settings
-
-
-def get_settings_test():
-    return Settings(
-        GITHUB_API_URL="https://github-api-test-only.de",
-        GITHUB_ACCESS_TOKEN="dummy-token",
-        DATABASE_USER="db_user_test",
-        DATABASE_PASSWORD="Zds5DuF6TLbZexOZHjP",
-        DATABASE_HOST="commit-tracker-db-test",
-        DATABASE_PORT="3306",
-        DATABASE_NAME="commit_history",
-    )
+from src.tests.integration.helpers import get_session_test
 
 
 @pytest_asyncio.fixture
-async def db_session_test():
-    engine = create_async_engine(get_settings_test().ASYNC_DATABASE_URI)
-    session_maker = async_sessionmaker(engine, expire_on_commit=False)
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    async with session_maker() as session:
+async def test_db_session():
+    async for session in get_session_test():
         yield session
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
 
-    await engine.dispose()
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def create_dummpy_commits(db_session_test):
+@pytest_asyncio.fixture
+async def create_dummpy_commits(test_db_session):
     statement = insert(Commit).values(test_commits)
-    await db_session_test.execute(statement)
-    await db_session_test.commit()
+    await test_db_session.execute(statement)
+    await test_db_session.commit()
+
+
+@pytest_asyncio.fixture
+async def commit_service_test_instance(test_db_session):
+    """
+    Provide an instance of the CommitService with a mocked git provider
+    for testing purposes.
+    """
+    database_storage = DatabaseStorage(test_db_session)
+
+    commit_service = CommitService(database_storage, MagicMock())
+    return commit_service

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.adapters.storage import CommitStorage
 from src.db.models import Commit
-from src.domain.models import AuthorCommitSummary, CommitData
+from src.domain.models import AuthorCommitSummary, CommitData, GroupedCommits
 
 
 class DatabaseStorage(CommitStorage):
@@ -24,6 +24,8 @@ class DatabaseStorage(CommitStorage):
 
     async def fetch_commits_by_author(self, author_identifier: str) -> List[CommitData]:
         """Get all commits by a partial match of author name or email."""
+        if author_identifier is None or author_identifier == "":
+            return []
         statement = select(Commit).where(
             or_(
                 Commit.author_name.ilike(f"%{author_identifier}%"),
@@ -41,7 +43,7 @@ class DatabaseStorage(CommitStorage):
             select(
                 Commit.author_name,
                 Commit.author_email,
-                func.count(Commit.id).label("total_commits"),
+                func.count(Commit.id).label("total_number_of_commits"),
                 func.max(Commit.commit_date).label("latest_commit_date"),
             )
             .group_by(Commit.author_name, Commit.author_email)
@@ -53,7 +55,7 @@ class DatabaseStorage(CommitStorage):
 
         return [AuthorCommitSummary.model_validate(row) for row in rows]
 
-    async def fetch_commits_since(self, start_date: int) -> List[CommitData]:
+    async def fetch_commits_since(self, start_date: int) -> List[GroupedCommits]:
         """Get all commits from a specific timestamp onward."""
         statement = (
             select(Commit)
@@ -61,6 +63,14 @@ class DatabaseStorage(CommitStorage):
             .order_by(Commit.author_name, Commit.commit_date.desc())
         )
         result = await self.session.execute(statement)
-        orm_commits = result.scalars().all()
 
-        return [CommitData.model_validate(c, from_attributes=True) for c in orm_commits]
+        grouped = {}
+        for commit in result.scalars():
+            commit_data = CommitData.model_validate(commit, from_attributes=True)
+            if commit_data.author_name not in grouped:
+                grouped[commit_data.author_name] = GroupedCommits(
+                    author_name=commit_data.author_name, commits=[]
+                )
+            grouped[commit_data.author_name].commits.append(commit_data)
+
+        return list(grouped.values())
