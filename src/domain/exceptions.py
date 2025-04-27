@@ -1,0 +1,2 @@
+class DataTransformationError(Exception):
+    pass

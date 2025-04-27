@@ -106,6 +106,8 @@ $ pipenv uninstall package  --categories dev-packages # uninstall a dev package
 ```
 
 ## ⛏️ Built Using <a name = "built_using"></a>
- - [FastAPI](https://fastapi.tiangolo.com/) - Web Framework
- - [Uvicorn](https://www.uvicorn.org/) - ASGI web server 
- - [MySQL](https://www.mysql.com/) - Database
+ - [FastAPI](https://fastapi.tiangolo.com/) - Web Framework.
+ - [Uvicorn](https://www.uvicorn.org/) - ASGI web server.
+ - [MySQL](https://www.mysql.com/) - Database.
+ - [SQLAlchemy](hhttps://www.sqlalchemy.org/) - ORM.
+ - [Alembic](https://alembic.sqlalchemy.org/en/latest/) - Database Migration Tool.

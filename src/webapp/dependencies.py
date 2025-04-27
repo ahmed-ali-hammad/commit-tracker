@@ -10,7 +10,7 @@ from src.adapters.database_adapter import DatabaseStorage
 from src.adapters.storage import CommitStorage
 from src.db.main import DatabaseManager
 from src.domain.service import CommitService
-from src.git_providers import GitHubProvider, GitProvider
+from src.providers.github_provider import GitHubProvider, GitProvider
 
 
 def get_storage(
@@ -30,14 +30,14 @@ def get_storage(
     return DatabaseStorage(session)
 
 
-def get_git_provider() -> GitProvider:
+def get_git_provider() -> GitHubProvider:
     """Factory function that provides a Git provider.
 
     Returns:
         GitProvider: a Git provider instance.
 
     """
-    return GitHubProvider
+    return GitHubProvider()
 
 
 def get_commit_service(

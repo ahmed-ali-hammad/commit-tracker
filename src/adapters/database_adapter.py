@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.mysql import insert
@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.adapters.storage import CommitStorage
 from src.db.models import Commit
+from src.domain.models import AuthorCommitSummary, CommitData
 
 
 class DatabaseStorage(CommitStorage):
@@ -14,9 +15,6 @@ class DatabaseStorage(CommitStorage):
 
     async def save_commit_batch(self, commit_batch: List[Dict]) -> None:
         """Saves a batch of commits"""
-        if not commit_batch:
-            return 0
-
         statement = insert(Commit).values(commit_batch)
         statement = statement.on_duplicate_key_update(
             commit_hash=statement.inserted.commit_hash
@@ -24,7 +22,7 @@ class DatabaseStorage(CommitStorage):
         await self.session.execute(statement)
         await self.session.commit()
 
-    async def fetch_commits_by_author(self, author_identifier: str) -> List[Dict]:
+    async def fetch_commits_by_author(self, author_identifier: str) -> List[CommitData]:
         """Get all commits by a partial match of author name or email."""
         statement = select(Commit).where(
             or_(
@@ -33,9 +31,11 @@ class DatabaseStorage(CommitStorage):
             )
         )
         result = await self.session.execute(statement)
-        return result.scalars().all()
+        orm_commits = result.scalars().all()
 
-    async def fetch_commit_summary_by_author(self) -> List[Tuple]:
+        return [CommitData.model_validate(c, from_attributes=True) for c in orm_commits]
+
+    async def fetch_commit_summary_by_author(self) -> List[AuthorCommitSummary]:
         """Get commit count and latest commit per author."""
         statement = (
             select(
@@ -49,9 +49,11 @@ class DatabaseStorage(CommitStorage):
         )
 
         result = await self.session.execute(statement)
-        return result.all()
+        rows = result.mappings().all()
 
-    async def fetch_commits_since(self, start_date: int) -> List[Dict]:
+        return [AuthorCommitSummary.model_validate(row) for row in rows]
+
+    async def fetch_commits_since(self, start_date: int) -> List[CommitData]:
         """Get all commits from a specific timestamp onward."""
         statement = (
             select(Commit)
@@ -59,4 +61,6 @@ class DatabaseStorage(CommitStorage):
             .order_by(Commit.author_name, Commit.commit_date.desc())
         )
         result = await self.session.execute(statement)
-        return result.scalars().all()
+        orm_commits = result.scalars().all()
+
+        return [CommitData.model_validate(c, from_attributes=True) for c in orm_commits]
