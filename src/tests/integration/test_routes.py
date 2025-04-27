@@ -93,9 +93,9 @@ class TestRoutes:
         summary = response.json()
 
         assert response.status_code == 200
-        assert any(author["name"] == "Sean Nguyen" for author in summary["authors"])
-        assert any("total_commits" in author for author in summary["authors"])
-        assert all("latest_commit" in author for author in summary["authors"])
+        assert any(author["author_name"] == "Sean Nguyen" for author in summary)
+        assert any("total_number_of_commits" in author for author in summary)
+        assert all("latest_commit_date" in author for author in summary)
 
     @pytest.mark.asyncio
     async def test_recent_commits_grouped_by_author_success(self):

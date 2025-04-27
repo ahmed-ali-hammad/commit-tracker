@@ -73,7 +73,17 @@ $ alembic upgrade head
 *Note: If you're setting up this project, you only need to apply the existing migrations, as they have already been generated.*
 
 ### 🧪 Running the tests <a name = "tests"></a>
-- [pytest](https://docs.pytest.org/) is used to run unit and integration tests.   
+- [pytest](https://docs.pytest.org/) is used to run unit and integration tests.
+- [schemathesis](https://schemathesis.readthedocs.io/en/stable/) is used for API testing.
+
+```bash
+# To run unit and integration tests
+$ pytest
+
+# The server has to be running to use Schemathesis.
+$ st run http://0.0.0.0:8000/openapi.json --experimental=openapi-3.1
+$ st run http://0.0.0.0:8000/openapi.json --checks all --experimental=openapi-3.1   # More strict checks
+``` 
 
 ### Code Style & Linting
 The following tools are run during pipelines to enforce code style and quality.
