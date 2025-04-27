@@ -70,9 +70,7 @@ class TestRoutes:
         author_identifier = "Non Existent"
         response = client.get(f"/commits/by-author/{author_identifier}")
         assert response.status_code == 404
-        assert (
-            response.json()["detail"] == "No commits found for the author: Non Existent"
-        )
+        assert response.json()["detail"] == "No commits found for: Non Existent"
 
     @pytest.mark.asyncio
     async def test_get_commits_by_author_case_insensitive(self):

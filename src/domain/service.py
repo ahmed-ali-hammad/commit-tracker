@@ -5,10 +5,9 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 
-from src.adapters.storage import CommitStorage
-from src.db.models import Commit
-from src.domain.validator import GitHubCommit
-from src.git_providers import GitProvider
+from src.adapters.database_adapter import DatabaseStorage
+from src.domain.models import CommitData
+from src.providers.git_providers import GitProvider
 
 _logger = logging.getLogger(__name__)
 
@@ -18,43 +17,9 @@ class CommitService:
     DEFAULT_PAGE_RANGE = (1, 11)
     DEFAULT_RECENT_DAYS = 7
 
-    def __init__(self, storage: CommitStorage, git_provider: GitProvider):
+    def __init__(self, storage: DatabaseStorage, git_provider: GitProvider) -> None:
         self.storage = storage
         self.git_provider = git_provider
-
-    @staticmethod
-    def _transform_commit_data(
-        commit_data: dict, repo_name: str = DEFAULT_REPO_NAME
-    ) -> dict:
-        """Transform raw commit data into storage format."""
-        validated = GitHubCommit(**commit_data)
-        return {
-            "commit_hash": validated.sha,
-            "author_name": validated.commit.author.name,
-            "author_email": validated.commit.author.email,
-            "commit_message": validated.commit.message,
-            "commit_date": int(validated.commit.author.date.timestamp()),
-            "repo_name": repo_name,
-        }
-
-    @staticmethod
-    def _process_commit_batch(
-        commits: list, repo_name: str = DEFAULT_REPO_NAME
-    ) -> tuple[list, list]:
-        successful_commits = []
-        failed_commits = []
-
-        for commit_data in commits:
-            try:
-                transformed = CommitService._transform_commit_data(
-                    commit_data, repo_name
-                )
-                successful_commits.append(transformed)
-            except Exception as e:
-                _logger.warning(f"Error processing commit: {e}")
-                failed_commits.append(commit_data.get("sha", "unknown"))
-
-        return successful_commits, failed_commits
 
     async def retrieve_and_store_commits(
         self,
@@ -67,30 +32,33 @@ class CommitService:
 
         # Fetch all pages concurrently
         tasks = [
-            self.git_provider._fetch_commit_batch(
+            self.git_provider.get_and_process_commit_batch_from_remote_provider(
                 httpx_client, github_access_token, repo_name, page
             )
             for page in range(*page_range)
         ]
-        pages_data = await asyncio.gather(*tasks, return_exceptions=True)
+        commit_batches = await asyncio.gather(*tasks, return_exceptions=True)
 
-        for page_num, page_result in enumerate(pages_data, 1):
-            if isinstance(page_result, Exception):
-                _logger.error(f"Error fetching page {page_num}: {page_result}")
+        for batch_num, batch in enumerate(commit_batches, 1):
+            if isinstance(batch, Exception):
+                _logger.error(f"Error fetching page {batch_num}: {batch}")
                 continue
 
-            commit_batch, failed = self._process_commit_batch(page_result)
-            await self.storage.save_commit_batch(commit_batch)
+            successful_commits_list, failed_commits_list = batch
+
+            await self.storage.save_commit_batch(successful_commits_list)
 
             results["pages_processed"] += 1
-            results["total_processed"] += len(commit_batch)
-            results["failed_commits"] += len(failed)
+            results["total_processed"] += len(successful_commits_list)
+            results["failed_commits"] += len(failed_commits_list)
 
             _logger.info(
-                f"Processed {len(commit_batch)} commits from page {page_num} ({len(failed)} failed)"
+                f"Processed {len(successful_commits_list)} commits from page {batch_num} ({len(failed_commits_list)} failed)"
             )
 
-    async def get_commits_by_author_name_or_email(self, author_identifier):
+    async def get_commits_by_author_name_or_email(
+        self, author_identifier: str
+    ) -> list[CommitData]:
         commits = await self.storage.fetch_commits_by_author(author_identifier)
         return commits
 
@@ -111,7 +79,7 @@ class CommitService:
         """Calculate timestamp for filtering commits."""
         return int((datetime.now(timezone.utc) - timedelta(days=days_ago)).timestamp())
 
-    def _group_commits_by_author(self, commits: list[Commit]) -> dict:
+    def _group_commits_by_author(self, commits: list[CommitData]) -> dict:
         """Process raw commits into grouped structure."""
         grouped = defaultdict(list)
         for commit in commits:
@@ -123,7 +91,9 @@ class CommitService:
             )
         return grouped
 
-    async def get_recent_commits_grouped_by_author(self, days_ago: int = 7) -> dict:
+    async def get_recent_commits_grouped_by_author(
+        self, days_ago: int = 7
+    ) -> list[dict]:
         """Composed method using the split components."""
         start_date = self._get_start_date(days_ago)
         commits = await self.storage.fetch_commits_since(start_date)

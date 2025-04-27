@@ -78,7 +78,7 @@ async def health_check(
     if not db_connection_status:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-    return {"status": "OK"}
+    return StatusResponse(status="OK")
 
 
 @app.post(
@@ -108,7 +108,7 @@ async def trigger_commit_fetch(
             github_access_token=settings.GITHUB_ACCESS_TOKEN,
         )
         _logger.info("Background task for commit fetch successfully scheduled.")
-        return {"status": "Processing started in background"}
+        return StatusResponse(status="Processing started in background")
     except Exception as ex:
         _logger.error(
             f"Failed to schedule background task. Exception: {ex}",

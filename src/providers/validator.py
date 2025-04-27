@@ -14,6 +14,6 @@ class CommitInfo(BaseModel):
     message: str
 
 
-class GitHubCommit(BaseModel):
+class GitHubCommitSchema(BaseModel):
     sha: str
     commit: CommitInfo
