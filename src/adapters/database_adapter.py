@@ -11,7 +11,7 @@ from src.domain.models import AuthorCommitSummary, CommitData, GroupedCommits
 
 class DatabaseStorage(CommitStorage):
     """
-    An asynchronous implementation of `CommitStorage` that interacts with a SQL database
+    An asynchronous implementation of `CommitStorage` that interacts with a MySQL database
     using SQLAlchemy to store and retrieve commit-related data.
     """
 
@@ -79,12 +79,9 @@ class DatabaseStorage(CommitStorage):
         Raw SQL:
             SELECT
                 author_name, author_email, COUNT(id) AS total_number_of_commits, MAX(commit_date) AS latest_commit_date
-            FROM
-                commits
-            GROUP BY
-                author_name, author_email
-            ORDER BY
-                COUNT(id) DESC
+            FROM commits
+            GROUP BY author_name, author_email
+            ORDER BY COUNT(id) DESC;
         """
         statement = (
             select(
