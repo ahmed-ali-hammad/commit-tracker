@@ -45,10 +45,11 @@ def get_commit_service(
     git_provider: GitProvider = Depends(get_git_provider),
 ) -> CommitService:
     """
-    Creates a CommitService instance with configured storage.
+    Creates a CommitService instance with a configured storage and git_provider.
 
     Args:
         storage: CommitStorage instance
+        git_provider: GitProvider instance
 
     Returns:
         Configured CommitService ready for use
