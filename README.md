@@ -20,11 +20,6 @@
 🚧 Work in Progress
 
 
-### Database Schema
-<div style="text-align: center;">
-  <img src="images/schema.png" alt="Diagram" width="600" />
-</div>
-
 ## 🏁 Getting Started <a name = "getting_started"></a>
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. 
 
@@ -39,7 +34,7 @@ Otherwise you will need to start the docker compose environment `docker compose 
 
 ```bash
 $ docker compose up
-$ docker exec -it commit-tracker-dev /bin/sh   # spawns a shell within the docker container
+$ docker exec -it commit-tracker-dev /bin/bash   # spawns a shell within the docker container
 $ pipenv shell  # spawns a shell within the virtualenv 
 ```
 

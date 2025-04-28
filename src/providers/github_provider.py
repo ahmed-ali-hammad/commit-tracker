@@ -20,7 +20,18 @@ class GitHubProvider(GitProvider):
         repo_name: str,
         batch_number: int,
     ) -> List[dict]:
-        """Fetch a batch of commits from GitHub API."""
+        """
+        Fetches a batch of commits from the GitHub API.
+
+        Args:
+            httpx_client (httpx.AsyncClient): HTTP client for making async requests.
+            github_access_token (str): GitHub access token for authentication.
+            repo_name (str): Name of the repository to fetch commits from.
+            batch_number (int): The batch number to fetch.
+
+        Returns:
+            List[dict]: A list of commits.
+        """
 
         url = f"https://api.github.com/repos/{repo_name}/commits"
 
@@ -37,7 +48,19 @@ class GitHubProvider(GitProvider):
         return response.json()
 
     def _transform_commit_data(self, commit_data: dict, repo_name: str) -> dict:
-        """Transform GitHub API commit data into a standardized format."""
+        """
+        Verifies and extracts commit information from the raw GitHub API response.
+
+        Args:
+            commit_data (dict): Raw commit data from GitHub API.
+            repo_name (str): Name of the repository.
+
+        Returns:
+            dict: Transformed commit data.
+
+        Raises:
+            DataTransformationError: If data transformation fails.
+        """
         try:
             validated = GitHubCommitSchema(**commit_data)
             return {
@@ -56,7 +79,18 @@ class GitHubProvider(GitProvider):
     def _process_commit_batch(
         self, commits: List[dict], repo_name: str
     ) -> Tuple[List[dict], List[str]]:
-        """Process a batch of commits, categorizing them into successful and failed."""
+        """
+        Processes a batch of commits.
+
+        Args:
+            commits (List[dict]): List of raw commit data from the GitHub API.
+            repo_name (str): Name of the repository.
+
+        Returns:
+            Tuple[List[dict], List[str]]: A tuple containing:
+                - A list of successfully transformed commits.
+                - A list of commit SHAs that failed to process.
+        """
         successful_commits = []
         failed_commits = []
 
@@ -79,8 +113,20 @@ class GitHubProvider(GitProvider):
         repo_name: str,
         batch_number: int,
     ) -> Tuple[List[dict], List[str]]:
-        """Retrieve and process a batch of commits from GitHub."""
+        """
+        Retrieves and processes a batch of commits from GitHub.
 
+        Args:
+            httpx_client (httpx.AsyncClient): HTTP client for making async requests.
+            github_access_token (str): GitHub access token for authentication.
+            repo_name (str): Name of the repository to fetch commits from.
+            batch_number (int): The batch number to fetch and process.
+
+        Returns:
+            Tuple[List[dict], List[str]]: A tuple containing:
+                - A list of successfully processed commits.
+                - A list of commit SHAs that failed to process.
+        """
         batch = await self._fetch_commit_batch(
             httpx_client, github_access_token, repo_name, batch_number
         )

@@ -11,6 +11,10 @@ _logger = logging.getLogger(__name__)
 
 
 class CommitService:
+    """
+    Service class for handling commit-related operations.
+    """
+
     DEFAULT_REPO_NAME = "nodejs/node"
     DEFAULT_BATCH_RANGE = (1, 11)
     DEFAULT_RECENT_DAYS = 7
@@ -26,6 +30,18 @@ class CommitService:
         repo_name: str = DEFAULT_REPO_NAME,
         batch_range: tuple[int, int] = DEFAULT_BATCH_RANGE,
     ) -> None:
+        """
+        Fetches and stores commit batches from a remote Git provider.
+
+        Args:
+            httpx_client (httpx.AsyncClient): HTTP client for async requests.
+            token (str): An access token for the git_provider.
+            repo_name (str, optional): Repository name. Defaults to DEFAULT_REPO_NAME.
+            batch_range (tuple[int, int], optional): Batch range to fetch. Defaults to DEFAULT_BATCH_RANGE.
+
+        Returns:
+            None. Logs progress and errors during processing.
+        """
         results = {"total_processed": 0, "batches_processed": 0, "failed_commits": 0}
 
         for batch in range(*batch_range):
@@ -59,20 +75,54 @@ class CommitService:
     async def get_commits_by_author_name_or_email(
         self, author_identifier: str
     ) -> list[CommitData]:
+        """
+        Retrieves commits by author name or email.
+
+        Args:
+            author_identifier (str): Author's name or email.
+
+        Returns:
+            list[CommitData]: List of matching commits.
+        """
         commits = await self.storage.fetch_commits_by_author(author_identifier)
         return commits
 
     async def get_commits_summary_grouped_by_author(self) -> list[AuthorCommitSummary]:
+        """
+        Returns a summary of commits grouped by author.
+
+        Returns:
+            list[AuthorCommitSummary]: Summary data per author.
+        """
         summary_data = await self.storage.fetch_commit_summary_by_author()
         return summary_data
 
     def _get_start_date(self, days_ago: int = DEFAULT_RECENT_DAYS) -> int:
-        """Calculate timestamp for filtering commits."""
+        """
+        Calculates the timestamp for a given number of days ago.
+
+        Args:
+            days_ago (int, optional): Number of days ago to calculate the timestamp for.
+                Defaults to DEFAULT_RECENT_DAYS.
+
+        Returns:
+            int: The Unix Timestamp for the calculated date.
+        """
         return int((datetime.now(timezone.utc) - timedelta(days=days_ago)).timestamp())
 
     async def get_recent_commits_grouped_by_author(
-        self, days_ago: int = 7
+        self, days_ago: int = DEFAULT_RECENT_DAYS
     ) -> list[GroupedCommits]:
+        """
+        Retrieves recent commits grouped by author.
+
+        Args:
+            days_ago (int, optional): Number of days ago to start fetching commits.
+                Defaults to DEFAULT_RECENT_DAYS.
+
+        Returns:
+            list[GroupedCommits]: List of commits grouped by author.
+        """
         start_date = self._get_start_date(days_ago)
         commits = await self.storage.fetch_commits_since(start_date)
         return commits
