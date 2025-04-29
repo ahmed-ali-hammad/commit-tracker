@@ -15,4 +15,6 @@ from src.adapters.storage import CommitStorage
 
 
 class ExternalAPIStorage(CommitStorage):
+    """A placeholder for future API-based commit storage"""
+
     pass

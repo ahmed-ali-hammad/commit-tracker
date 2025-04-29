@@ -6,16 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.adapters.storage import CommitStorage
 from src.db.models import Commit
-from src.domain.models import AuthorCommitSummary, CommitData, GroupedCommits
+from src.domain.models import AuthorCommitSummary, CommitData
 
 
 class DatabaseStorage(CommitStorage):
     """
-    An asynchronous implementation of `CommitStorage` that interacts with a MySQL database
+    An implementation of `CommitStorage` that interacts with a MySQL database
     using SQLAlchemy to store and retrieve commit-related data.
     """
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession) -> None:
         """
         Initializes the `DatabaseStorage` with an asynchronous session.
 
@@ -47,7 +47,7 @@ class DatabaseStorage(CommitStorage):
         Retrieves all commits that partially match the given author name or email.
 
         Args:
-            author_identifier (str): A substring to match against author name or email.
+            author_identifier (str): A string or a substring to match against author name or email.
 
         Returns:
             List[CommitData]: A list of commit records that match the author identifier.
@@ -99,17 +99,18 @@ class DatabaseStorage(CommitStorage):
 
         return [AuthorCommitSummary.model_validate(row) for row in rows]
 
-    async def fetch_commits_since(self, start_date: int) -> List[GroupedCommits]:
+    async def fetch_commits_since(self, start_date: int) -> List[CommitData]:
         """
-        Retrieves all commits from a specific timestamp onward, grouped by author.
+        Fetches all commits from the database from a specific timestamp onward.
 
         Args:
-            start_date (int): A Unix timestamp. Only commits after this time will be included.
+            start_date (int): A Unix timestamp.
 
         Returns:
-            List[GroupedCommits]: A list of authors, each with a list of their commits.
+            List[CommitData]: List of commit data objects.
+
         Raw SQL:
-            SELECT  * FROM commits WHERE commit_date >= %(start_date)s
+            SELECT * FROM commits WHERE commit_date >= %(start_date)s
             ORDER BY author_name ASC, commit_date DESC
         """
         statement = (
@@ -118,14 +119,6 @@ class DatabaseStorage(CommitStorage):
             .order_by(Commit.author_name, Commit.commit_date.desc())
         )
         result = await self.session.execute(statement)
+        orm_commits = result.scalars().all()
 
-        grouped = {}
-        for commit in result.scalars():
-            commit_data = CommitData.model_validate(commit, from_attributes=True)
-            if commit_data.author_name not in grouped:
-                grouped[commit_data.author_name] = GroupedCommits(
-                    author_name=commit_data.author_name, commits=[]
-                )
-            grouped[commit_data.author_name].commits.append(commit_data)
-
-        return list(grouped.values())
+        return [CommitData.model_validate(c, from_attributes=True) for c in orm_commits]

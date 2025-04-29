@@ -17,7 +17,7 @@
 - [Built Using](#built-using)
 
 ## 🧐 About <a name = "about"></a>
-🚧 Work in Progress
+This webapp provide away to connect to GitHub API to fetch data from the `nodejs/node` repository. It retrieves the 1000 most recent commits, stores them in a database while avoiding duplicates. It also exposes endpoints to access commit and author-related data.
 
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
@@ -26,6 +26,12 @@ These instructions will get you a copy of the project up and running on your loc
 ### Prerequisites
  - [Docker](https://docs.docker.com/)
  - [Docker Compose](https://docs.docker.com/compose/)
+
+### GitHub Token
+First, create a GitHub token by following the instructions provided here.
+[Creating a Github fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token)
+
+After generating the token, add it to the `GITHUB_ACCESS_TOKEN` variable in the `./config/.env.example` file, and then save the file.
 
 ### Installing
 If you're opening this project using [devcontainers](https://containers.dev/) then your docker container should be ready to go!
@@ -38,21 +44,14 @@ $ docker exec -it commit-tracker-dev /bin/bash   # spawns a shell within the doc
 $ pipenv shell  # spawns a shell within the virtualenv 
 ```
 
-### ▶️ Running the API
-```bash
-# Load environments variables
-$ source ./config/.env.example
+### Database Migrations
 
-# Run the server using click
-$ python cli.py run-webapp
+First Load the environments variables.
+```bash
+$ source ./config/.env.example
 ```
 
-Endpoints:
-- [API Docs](http://localhost:7090/docs)
-- [Healthcheck](http://localhost:7090/health)
-
-
-### Database Migrations
+*Note: The following three Alembic commands are useful to document here, but if you're setting up this project, you only need to run the third one: `alembic upgrade head`.*
 
 ```bash
 # init the migrations folder
@@ -65,7 +64,15 @@ $ alembic revision --autogenerate -m "message"
 $ alembic upgrade head
 ```
 
-*Note: If you're setting up this project, you only need to apply the existing migrations, as they have already been generated.*
+### ▶️ Running the API
+```bash
+# Run the server using click
+$ python cli.py run-webapp
+```
+
+Endpoints:
+- [API Docs](http://localhost:7090/docs)
+- [Healthcheck](http://localhost:7090/health)
 
 ### 🧪 Running the tests <a name = "tests"></a>
 - [pytest](https://docs.pytest.org/) is used to run unit and integration tests.
@@ -73,7 +80,7 @@ $ alembic upgrade head
 
 ```bash
 # To run unit and integration tests
-$ pytest
+$ pytest .
 
 # The server has to be running to use Schemathesis.
 $ st run http://0.0.0.0:8000/openapi.json --experimental=openapi-3.1

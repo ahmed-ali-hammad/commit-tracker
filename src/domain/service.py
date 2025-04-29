@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import List
 
 import httpx
 
@@ -38,9 +39,6 @@ class CommitService:
             token (str): An access token for the git_provider.
             repo_name (str, optional): Repository name. Defaults to DEFAULT_REPO_NAME.
             batch_range (tuple[int, int], optional): Batch range to fetch. Defaults to DEFAULT_BATCH_RANGE.
-
-        Returns:
-            None. Logs progress and errors during processing.
         """
         results = {"total_processed": 0, "batches_processed": 0, "failed_commits": 0}
 
@@ -49,7 +47,7 @@ class CommitService:
                 successful_commits, failed_commits = (
                     await self.git_provider.get_and_process_commit_batch_from_remote_provider(
                         httpx_client=httpx_client,
-                        github_access_token=token,
+                        token=token,
                         repo_name=repo_name,
                         batch_number=batch,
                     )
@@ -61,11 +59,13 @@ class CommitService:
                 results["failed_commits"] += len(failed_commits)
 
                 _logger.info(
-                    f"batch {batch} — Processed: {len(successful_commits)}, Failed: {len(failed_commits)}"
+                    f"batch: {batch} — Processed: {len(successful_commits)}, Failed: {len(failed_commits)}"
                 )
 
             except Exception as ex:
-                _logger.error(f"Error fetching batch {batch}: {ex}")
+                _logger.error(
+                    f"Failed to fetch and store commits for batch: {batch}. Exception: {ex}"
+                )
         _logger.info(
             f"Total commits retrieved: {results['total_processed'] + results['failed_commits']} — "
             f"Successfully processed: {results['total_processed']}, "
@@ -89,7 +89,7 @@ class CommitService:
 
     async def get_commits_summary_grouped_by_author(self) -> list[AuthorCommitSummary]:
         """
-        Returns a summary of commits grouped by author.
+        Returns a summary date of commits grouped by author.
 
         Returns:
             list[AuthorCommitSummary]: Summary data per author.
@@ -97,18 +97,40 @@ class CommitService:
         summary_data = await self.storage.fetch_commit_summary_by_author()
         return summary_data
 
-    def _get_start_date(self, days_ago: int = DEFAULT_RECENT_DAYS) -> int:
+    async def _get_start_timestamp(self, days_ago: int = DEFAULT_RECENT_DAYS) -> int:
         """
-        Calculates the timestamp for a given number of days ago.
+        Calculates the unix timestamp for a given number of days ago.
 
         Args:
             days_ago (int, optional): Number of days ago to calculate the timestamp for.
                 Defaults to DEFAULT_RECENT_DAYS.
 
         Returns:
-            int: The Unix Timestamp for the calculated date.
+            int: The unix timestamp for the calculated date.
         """
         return int((datetime.now(timezone.utc) - timedelta(days=days_ago)).timestamp())
+
+    async def _group_commits_by_author(
+        self,
+        commits: List[CommitData],
+    ) -> List[GroupedCommits]:
+        """
+        Groups commits by author name.
+
+        Args:
+            commits (List[CommitData]): List of validated commit data.
+
+        Returns:
+            List[GroupedCommits]: Commits grouped by author.
+        """
+        grouped = {}
+        for commit in commits:
+            if commit.author_name not in grouped:
+                grouped[commit.author_name] = GroupedCommits(
+                    author_name=commit.author_name, commits=[]
+                )
+            grouped[commit.author_name].commits.append(commit)
+        return list(grouped.values())
 
     async def get_recent_commits_grouped_by_author(
         self, days_ago: int = DEFAULT_RECENT_DAYS
@@ -123,6 +145,7 @@ class CommitService:
         Returns:
             list[GroupedCommits]: List of commits grouped by author.
         """
-        start_date = self._get_start_date(days_ago)
+        start_date = await self._get_start_timestamp(days_ago)
         commits = await self.storage.fetch_commits_since(start_date)
-        return commits
+        grouped_commits = await self._group_commits_by_author(commits=commits)
+        return grouped_commits

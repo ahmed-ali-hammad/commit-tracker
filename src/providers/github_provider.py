@@ -2,8 +2,9 @@ import logging
 from typing import List, Tuple
 
 import httpx
+from pydantic import ValidationError
 
-from src.domain.exceptions import DataTransformationError
+from src.providers.exceptions import GitProviderDataValidationError
 from src.providers.git_providers import GitProvider
 from src.providers.validator import GitHubCommitSchema
 
@@ -16,7 +17,7 @@ class GitHubProvider(GitProvider):
     async def _fetch_commit_batch(
         self,
         httpx_client: httpx.AsyncClient,
-        github_access_token: str,
+        token: str,
         repo_name: str,
         batch_number: int,
     ) -> List[dict]:
@@ -25,12 +26,12 @@ class GitHubProvider(GitProvider):
 
         Args:
             httpx_client (httpx.AsyncClient): HTTP client for making async requests.
-            github_access_token (str): GitHub access token for authentication.
+            token (str): GitHub access token for authentication.
             repo_name (str): Name of the repository to fetch commits from.
             batch_number (int): The batch number to fetch.
 
         Returns:
-            List[dict]: A list of commits.
+            List[dict]: A list of raw commits.
         """
 
         url = f"https://api.github.com/repos/{repo_name}/commits"
@@ -39,7 +40,7 @@ class GitHubProvider(GitProvider):
 
         headers = {
             "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {github_access_token}",
+            "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": "2022-11-28",
         }
 
@@ -47,7 +48,7 @@ class GitHubProvider(GitProvider):
         response.raise_for_status()
         return response.json()
 
-    def _transform_commit_data(self, commit_data: dict, repo_name: str) -> dict:
+    def _parse_and_validate_commit(self, commit_data: dict, repo_name: str) -> dict:
         """
         Verifies and extracts commit information from the raw GitHub API response.
 
@@ -59,7 +60,7 @@ class GitHubProvider(GitProvider):
             dict: Transformed commit data.
 
         Raises:
-            DataTransformationError: If data transformation fails.
+            GitProviderDataValidationError: If data validation fails.
         """
         try:
             validated = GitHubCommitSchema(**commit_data)
@@ -71,9 +72,9 @@ class GitHubProvider(GitProvider):
                 "commit_date": int(validated.commit.author.date.timestamp()),
                 "repo_name": repo_name,
             }
-        except Exception as e:
-            raise DataTransformationError(
-                f"Failed to transform commit data: {str(e)}"
+        except ValidationError as e:
+            raise GitProviderDataValidationError(
+                f"Failed to validate commit data for repo: '{repo_name}': {e}"
             ) from e
 
     def _process_commit_batch(
@@ -88,7 +89,7 @@ class GitHubProvider(GitProvider):
 
         Returns:
             Tuple[List[dict], List[str]]: A tuple containing:
-                - A list of successfully transformed commits.
+                - A list of successfully parsed commits.
                 - A list of commit SHAs that failed to process.
         """
         successful_commits = []
@@ -96,9 +97,9 @@ class GitHubProvider(GitProvider):
 
         for commit_data in commits:
             try:
-                transformed = self._transform_commit_data(commit_data, repo_name)
+                transformed = self._parse_and_validate_commit(commit_data, repo_name)
                 successful_commits.append(transformed)
-            except DataTransformationError as e:
+            except GitProviderDataValidationError as e:
                 _logger.warning(
                     f"Failed to process commit {commit_data.get('sha', 'unknown')}: {e}"
                 )
@@ -109,7 +110,7 @@ class GitHubProvider(GitProvider):
     async def get_and_process_commit_batch_from_remote_provider(
         self,
         httpx_client: httpx.AsyncClient,
-        github_access_token: str,
+        token: str,
         repo_name: str,
         batch_number: int,
     ) -> Tuple[List[dict], List[str]]:
@@ -118,7 +119,7 @@ class GitHubProvider(GitProvider):
 
         Args:
             httpx_client (httpx.AsyncClient): HTTP client for making async requests.
-            github_access_token (str): GitHub access token for authentication.
+            token (str): GitHub access token for authentication.
             repo_name (str): Name of the repository to fetch commits from.
             batch_number (int): The batch number to fetch and process.
 
@@ -128,7 +129,7 @@ class GitHubProvider(GitProvider):
                 - A list of commit SHAs that failed to process.
         """
         batch = await self._fetch_commit_batch(
-            httpx_client, github_access_token, repo_name, batch_number
+            httpx_client, token, repo_name, batch_number
         )
         successful_commits, failed_commits = self._process_commit_batch(
             batch, repo_name

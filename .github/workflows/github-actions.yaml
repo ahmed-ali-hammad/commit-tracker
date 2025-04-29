@@ -31,6 +31,10 @@ jobs:
         black . --check
         flake8 .
 
-    - name: Run Tests
+    - name: Type Checking
+      run: |
+        mypy ./src
+
+    - name: Unit Tests
       run: |
         pytest src/tests/unit

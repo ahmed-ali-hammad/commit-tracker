@@ -1,10 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import httpx
 
 
 class GitProvider(ABC):
+    """
+    Abstract base class for Git providers (GitHub, GitLab, Bitbucket).
+    """
+
     @abstractmethod
     async def _fetch_commit_batch(
         self, httpx_client: httpx.AsyncClient, token: str, repo_name: str, page: int
@@ -17,6 +21,6 @@ class GitProvider(ABC):
         httpx_client: httpx.AsyncClient,
         token: str,
         repo_name: str,
-        page_number: int,
-    ):
+        batch_number: int,
+    ) -> Tuple[List[dict], List[str]]:
         pass

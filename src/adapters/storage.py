@@ -5,6 +5,10 @@ from src.domain.models import AuthorCommitSummary, CommitData
 
 
 class CommitStorage(ABC):
+    """
+    Abstract base class for commit storage.
+    """
+
     @abstractmethod
     async def save_commit_batch(self, commit_batch: List[Dict]) -> None:
         pass

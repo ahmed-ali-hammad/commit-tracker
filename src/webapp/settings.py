@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     DATABASE_NAME: str
     DATABASE_USER: str
     DATABASE_PASSWORD: str
-    DATABASE_URI: str | None = None
+    DATABASE_URI: str | None = None  # Really only used by Alembic for migrations
     ASYNC_DATABASE_URI: str | None = None
 
     @field_validator("DATABASE_URI", mode="before")
