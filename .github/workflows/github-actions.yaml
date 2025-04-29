@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build:
-    name: "Linting"  
+    name: "Code Quality & Tests"  
     runs-on: ubuntu-latest
 
     steps:
