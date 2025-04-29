@@ -44,11 +44,14 @@ class GitHubProvider(GitProvider):
             "X-GitHub-Api-Version": "2022-11-28",
         }
 
+        # We should really handle GitHub rate limiting (403 or 429), maybe using backoff library
         response = await httpx_client.get(url, headers=headers, params=params)
         response.raise_for_status()
         return response.json()
 
-    def _parse_and_validate_commit(self, commit_data: dict, repo_name: str) -> dict:
+    async def _parse_and_validate_commit(
+        self, commit_data: dict, repo_name: str
+    ) -> dict:
         """
         Verifies and extracts commit information from the raw GitHub API response.
 
@@ -77,7 +80,7 @@ class GitHubProvider(GitProvider):
                 f"Failed to validate commit data for repo: '{repo_name}': {e}"
             ) from e
 
-    def _process_commit_batch(
+    async def _process_commit_batch(
         self, commits: List[dict], repo_name: str
     ) -> Tuple[List[dict], List[str]]:
         """
@@ -97,7 +100,9 @@ class GitHubProvider(GitProvider):
 
         for commit_data in commits:
             try:
-                transformed = self._parse_and_validate_commit(commit_data, repo_name)
+                transformed = await self._parse_and_validate_commit(
+                    commit_data, repo_name
+                )
                 successful_commits.append(transformed)
             except GitProviderDataValidationError as e:
                 _logger.warning(
@@ -131,7 +136,7 @@ class GitHubProvider(GitProvider):
         batch = await self._fetch_commit_batch(
             httpx_client, token, repo_name, batch_number
         )
-        successful_commits, failed_commits = self._process_commit_batch(
+        successful_commits, failed_commits = await self._process_commit_batch(
             batch, repo_name
         )
 
