@@ -10,7 +10,6 @@ First, create a GitHub token by following the instructions provided here.
 [Creating a Github fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token)
 
 
-
 After generating the token, add it to the `GITHUB_ACCESS_TOKEN` variable in the `./config/.env.example` file, and then save the file.
 
 ### Installing
@@ -26,8 +25,13 @@ $ pipenv shell  # spawns a shell within the virtualenv
 ```
 
 ### Database Migrations
+First Load the environments variables.
 ```bash
-$ source ./config/.env.example  # Load environments variables
+$ source ./config/.env.example
+```
+
+Then Apply the migrations.
+```bash
 $ alembic upgrade head  # Apply database migrations 
 ```
 

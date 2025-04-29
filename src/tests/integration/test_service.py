@@ -6,43 +6,13 @@ from src.db.models import Commit
 from src.domain.models import AuthorCommitSummary, CommitData, GroupedCommits
 
 
-@pytest.fixture
-def get_test_commits():
-    return [
-        {
-            "commit_hash": "c1b15a49be8cf4f14cfac3c2a8207e012b97bfd4",
-            "author_name": "James M Snell",
-            "author_email": "jasnell@gmail.com",
-            "commit_message": "esm: graduate import.meta properties...",
-            "commit_date": 1745512649,
-            "repo_name": "nodejs/node",
-        },
-        {
-            "commit_hash": "e0cf8ae62a28bf78c5e956d2a0de10bb7a57d2bf",
-            "author_name": "Yagiz Nizipli",
-            "author_email": "yagiz@nizipli.com",
-            "commit_message": "url: improve canParse() performance...",
-            "commit_date": 1745765549,
-            "repo_name": "nodejs/node",
-        },
-        {
-            "commit_hash": "647175ee0b8ca19d6f315216c879b1dc89ad2759",
-            "author_name": "James M Snell",
-            "author_email": "jasnell@gmail.com",
-            "commit_message": "buffer: move SlowBuffer to EOL...",
-            "commit_date": 1745506222,
-            "repo_name": "nodejs/node",
-        },
-    ]
-
-
 @pytest.mark.asyncio
 class TestCommitService:
     async def test_retrieve_and_store_commits_success(
-        self, mocker, commit_service_test_instance, test_db_session, get_test_commits
+        self, mocker, commit_service_test_instance, test_db_session, raw_test_commits
     ):
         mock_get_and_process_commit_batch_from_remote_provider = mocker.AsyncMock(
-            return_value=(get_test_commits, [])
+            return_value=(raw_test_commits, [])
         )
         commit_service_test_instance.git_provider.get_and_process_commit_batch_from_remote_provider = (
             mock_get_and_process_commit_batch_from_remote_provider
@@ -82,7 +52,7 @@ class TestCommitService:
         assert result.scalar_one() == 0
 
         assert "client Error" in caplog.text
-        assert "Error fetching batch" in caplog.text
+        assert "Failed to fetch and store commits for batch" in caplog.text
         mock_get_and_process_commit_batch_from_remote_provider.assert_called()
 
     async def test_get_commits_by_author_full_name_success(
@@ -251,6 +221,10 @@ class TestCommitService:
         # The number of authors in the summary should remain the same, but the commit count for the existing author should increase
         assert len(summary_data_before) == len(summary_data_after)
 
+    async def test_get_start_timestamp(self, commit_service_test_instance):
+        timestamp = await commit_service_test_instance._get_start_timestamp()
+        assert isinstance(timestamp, int)
+
     async def test_get_commits_summary_grouped_by_author_more_commits_for_new_author(
         self, commit_service_test_instance, create_dummpy_commits, test_db_session
     ):
@@ -298,7 +272,7 @@ class TestCommitService:
         self, mocker, commit_service_test_instance, create_dummpy_commits
     ):
         mocker.patch(
-            "src.domain.service.CommitService._get_start_date",
+            "src.domain.service.CommitService._get_start_timestamp",
             return_value=1745356960,
         )
         commits = (
@@ -313,10 +287,14 @@ class TestCommitService:
         assert len(commits) == 11
 
     async def test_get_recent_commits_grouped_by_author_only_one_commit_found(
-        self, mocker, commit_service_test_instance, create_dummpy_commits
+        self,
+        mocker,
+        commit_service_test_instance,
+        create_dummpy_commits,
     ):
+
         mocker.patch(
-            "src.domain.service.CommitService._get_start_date",
+            "src.domain.service.CommitService._get_start_timestamp",
             return_value=1745788960,
         )
         commits = (

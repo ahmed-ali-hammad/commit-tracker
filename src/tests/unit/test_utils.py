@@ -48,21 +48,19 @@ class TestSettings:
 @pytest.mark.asyncio
 class TestDBConnection:
 
-    async def test_check_db_connection_success(self, mock_async_db_session):
-        mock_async_db_session.execute.return_value = True
-        is_connected = await check_db_connection(mock_async_db_session)
+    async def test_check_db_connection_success(self, mock_db_session):
+        mock_db_session.execute.return_value = True
+        is_connected = await check_db_connection(mock_db_session)
 
-        mock_async_db_session.execute.assert_called_once()
+        mock_db_session.execute.assert_called_once()
         assert is_connected is True
 
-    async def test_check_db_connection_failure(self, mock_async_db_session):
-        mock_async_db_session.execute.side_effect = Exception(
-            "Database connection error"
-        )
+    async def test_check_db_connection_failure(self, mock_db_session):
+        mock_db_session.execute.side_effect = Exception("Database connection error")
 
-        is_connected = await check_db_connection(mock_async_db_session)
+        is_connected = await check_db_connection(mock_db_session)
 
-        mock_async_db_session.execute.assert_called_once()
+        mock_db_session.execute.assert_called_once()
         assert is_connected is False
 
 

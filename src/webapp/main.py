@@ -11,7 +11,7 @@ from src.db.main import DatabaseManager, check_db_connection
 from src.domain.service import CommitService
 from src.utils import SingletonHttpx
 from src.webapp.dependencies import get_commit_service
-from src.webapp.schemas import (
+from src.webapp.schema import (
     AuthorCommitsListResponse,
     AuthorCommitStatsResponse,
     CommitDetailResponse,
@@ -25,7 +25,7 @@ _logger = logging.getLogger(__name__)
 @lru_cache
 def get_settings():
     """
-    Loads and caches the application settings.
+    Loads the application settings.
 
     Returns:
         Settings: The cached settings object.

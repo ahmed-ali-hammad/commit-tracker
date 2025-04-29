@@ -63,7 +63,7 @@ async def check_db_connection(session: AsyncSession) -> bool:
     Simple check for database connection using a SELECT query.
 
     Args:
-        db_sess (AsyncSession): The database session.
+        session (AsyncSession): The database session.
 
     Returns:
         bool: True if the DB is reachable, False otherwise.
@@ -72,5 +72,8 @@ async def check_db_connection(session: AsyncSession) -> bool:
         await session.execute(text("SELECT 1"))
         return True
     except Exception as e:
-        _logger.error(f"Database connection error: {e}")
+        _logger.error(
+            f"Database connection error: {e}",
+            exc_info=True,
+        )
         return False
