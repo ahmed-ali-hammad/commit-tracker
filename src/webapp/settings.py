@@ -12,7 +12,6 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "DEBUG"
 
-    GITHUB_API_URL: str
     GITHUB_ACCESS_TOKEN: str
 
     DATABASE_HOST: str
