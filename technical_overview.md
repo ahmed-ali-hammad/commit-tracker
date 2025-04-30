@@ -1,6 +1,7 @@
 ## 🐞 Debugging Approach & Tools
 To debug this mini-project, I followed several strategies:
 
+- IDE Debugger: I used the `debugpy` extension in Visual Studio Code to set breakpoints, inspect variables, and step through code.
 - Logging: I added logging throughout the code where necessary. In case of exceptions, I used `exc_info=True` to capture the full traceback.
 - Testing: I wrote a few integration tests early in development to help catch bugs as changes were made. I used `pytest` as the testing framework. All tests in the repository are compatible with it. The command I used is:
 

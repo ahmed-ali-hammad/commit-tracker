@@ -19,7 +19,6 @@ async def get_mock_session_test():
 
 def get_settings_test():
     return Settings(
-        GITHUB_API_URL="https://github-api-test-only.de",
         GITHUB_ACCESS_TOKEN="dummy-token",
         DATABASE_USER="db_hero",
         DATABASE_PASSWORD="supersecret123",

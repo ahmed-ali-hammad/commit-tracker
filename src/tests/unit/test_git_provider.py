@@ -1,36 +1,7 @@
 import httpx
 import pytest
-import pytest_asyncio
 
 from src.providers.exceptions import GitProviderDataValidationError
-from src.providers.github_provider import GitHubProvider
-
-
-@pytest_asyncio.fixture
-async def get_github_provider():
-    return GitHubProvider()
-
-
-@pytest_asyncio.fixture
-async def sample_commit():
-    return {
-        "sha": "123abc",
-        "commit": {
-            "author": {
-                "name": "Alice",
-                "email": "alice@mango.com",
-                "date": 1745703803,
-            },
-            "message": "Sample commit",
-        },
-    }
-
-
-@pytest_asyncio.fixture
-async def mock_httpx_client(mocker):
-    client = mocker.AsyncMock()
-    client.get = mocker.AsyncMock()
-    return client
 
 
 @pytest.mark.asyncio
@@ -121,7 +92,7 @@ class TestGitHubProvider:
         )
 
     async def test_process_commit_batch_success(
-        self, mocker, get_github_provider, sample_commit
+        self, mocker, get_github_provider, sample_raw_commit
     ):
         get_github_provider._parse_and_validate_commit = mocker.AsyncMock(
             return_value={
@@ -134,7 +105,7 @@ class TestGitHubProvider:
             }
         )
 
-        commits = [sample_commit]
+        commits = [sample_raw_commit]
         success, failed = await get_github_provider._process_commit_batch(
             commits, "example/repo"
         )
@@ -144,7 +115,7 @@ class TestGitHubProvider:
         assert success[0]["commit_hash"] == "123abc"
 
     async def test_process_commit_batch_partial_failure(
-        self, mocker, get_github_provider, sample_commit
+        self, mocker, get_github_provider, sample_raw_commit
     ):
         invalid_commit = {"sha": "badsha", "commit": {}}
 
@@ -157,7 +128,7 @@ class TestGitHubProvider:
             side_effect=fake_parser
         )
 
-        commits = [sample_commit, invalid_commit]
+        commits = [sample_raw_commit, invalid_commit]
         success, failed = await get_github_provider._process_commit_batch(
             commits, "example/repo"
         )
