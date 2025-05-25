@@ -39,6 +39,7 @@ If you're opening this project using [devcontainers](https://containers.dev/) th
 Otherwise you will need to start the docker compose environment `docker compose up` and open a shell into the container `commit-tracker-dev`.
 
 ```bash
+# These three commands are necessary only if you're not using devcontainers. If you're using devcontainers, you can skip them and proceed directly to the Database Migrations section.
 $ docker compose up
 $ docker exec -it commit-tracker-dev /bin/bash   # spawns a shell within the docker container
 $ pipenv shell  # spawns a shell within the virtualenv 
