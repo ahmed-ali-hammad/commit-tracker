@@ -9,7 +9,6 @@ def get_settings_test():
     A helper function that returns the test-specific settings for the application.
     """
     return Settings(
-        GITHUB_API_URL="https://github-api-test-only.de",
         GITHUB_ACCESS_TOKEN="dummy-token",
         DATABASE_USER="db_user_test",
         DATABASE_PASSWORD="Zds5DuF6TLbZexOZHjP",

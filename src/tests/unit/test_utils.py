@@ -11,7 +11,6 @@ from src.webapp.settings import Settings
 class TestSettings:
 
     async def test_settings_builds_database_uri(self, monkeypatch):
-        monkeypatch.setenv("GITHUB_API_URL", "https://github-api-test-only.de")
         monkeypatch.setenv("GITHUB_ACCESS_TOKEN", "dummy-token")
         monkeypatch.setenv("DATABASE_USER", "db_hero")
         monkeypatch.setenv("DATABASE_PASSWORD", "supersecret123")
@@ -30,7 +29,6 @@ class TestSettings:
         )
 
     async def test_settings_raises_error_on_missing_value(self, monkeypatch):
-        monkeypatch.setenv("GITHUB_API_URL", "https://github-api-test-only.de")
         monkeypatch.setenv("GITHUB_ACCESS_TOKEN", "dummy-token")
         monkeypatch.delenv("DATABASE_USER", raising=False)
         monkeypatch.setenv("DATABASE_PASSWORD", "supersecret123")
